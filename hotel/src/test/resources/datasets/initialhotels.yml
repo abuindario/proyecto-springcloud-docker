@@ -1,0 +1,11 @@
+HOTEL:
+   - ID: 1
+     NAME: "RIU PALACE"
+     CATEGORY: "5 stars"
+     PRICE: 123.50
+     AVAILABLE: TRUE
+   - ID: 2
+     NAME: "IBIS Málaga"
+     CATEGORY: "2 stars"
+     PRICE: 49.50
+     AVAILABLE: TRUE
