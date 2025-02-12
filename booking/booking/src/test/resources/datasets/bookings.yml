@@ -1,0 +1,6 @@
+BOOKING:
+   - ID: 1
+     CUSTOMERNAME: "Elsa Polindo"
+     DNI: "12345678A"
+     IDHOTEL: 1
+     IDVUELO: 1
