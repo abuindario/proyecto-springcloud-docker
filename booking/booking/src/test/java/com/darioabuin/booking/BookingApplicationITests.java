@@ -2,6 +2,7 @@ package com.darioabuin.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -15,11 +16,13 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClient.RequestHeadersUriSpec;
 import org.springframework.web.client.RestClient.ResponseSpec;
@@ -126,6 +129,20 @@ class BookingApplicationITests {
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
 		assertEquals("Please, enter a hotel name to check.", response.getBody());
 	}
+	
+	@Test
+	void shouldFailGetBookings_errorFromRestClient_hotelServiceUnavailable() {
+		// GIVEN
+		String hotelName = "something";
+		
+		// WHEN
+		setupNullMockRestClient(hotelName);
+		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
+		
+		// THEN
+		assertNotNull(response);
+		assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+		assertEquals("Hotel service unavailable.", response.getBody());	}
 
 	private Booking populateBooking() {
 		return new Booking(Long.valueOf(1), "Elsa Polindo", "12345678A", Long.valueOf(1), Long.valueOf(1));
@@ -148,5 +165,13 @@ class BookingApplicationITests {
 		default -> null;
 		};
 		return hotelDto;
+	}
+	
+	private void setupNullMockRestClient(String hotelName) {
+		RequestHeadersUriSpec getRequest = mock(RequestHeadersUriSpec.class);
+		ResponseSpec response = mock(ResponseSpec.class);
+		when(restClient.get()).thenReturn(getRequest);
+		when(getRequest.uri(anyString())).thenReturn(getRequest);
+		when(getRequest.retrieve()).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 	}
 }
