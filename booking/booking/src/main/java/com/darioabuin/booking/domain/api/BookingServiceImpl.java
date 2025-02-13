@@ -1,5 +1,6 @@
 package com.darioabuin.booking.domain.api;
 
+import java.sql.SQLException;
 import java.util.List;
 
 import com.darioabuin.booking.domain.model.Booking;
@@ -14,7 +15,7 @@ public class BookingServiceImpl implements BookingService {
 	}
 
 	@Override
-	public List<Booking> getAllBookings(Long idHotel) {
+	public List<Booking> getAllBookings(Long idHotel) throws SQLException {
 		return bookingRepository.findAll(idHotel);
 	}
 

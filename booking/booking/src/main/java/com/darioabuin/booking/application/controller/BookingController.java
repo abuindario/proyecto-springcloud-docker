@@ -1,5 +1,7 @@
 package com.darioabuin.booking.application.controller;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -26,7 +28,7 @@ public class BookingController {
 
 	private BookingService bookingService;
 	private RestClient restClient;
-	private String HOTEL_SERVICE_URL = "http://localhost:8081/hotels/";
+	private String HOTEL_SERVICE_URL = "http://localhost:8080/hotels/";
 
 	public BookingController(BookingService bookingService, RestClient restClient) {
 		this.bookingService = bookingService;
@@ -42,17 +44,26 @@ public class BookingController {
 		if (StringUtils.isBlank(hotelName)) {
 			return new ResponseEntity<>("Please, enter a hotel name to check.", HttpStatus.BAD_REQUEST);
 		}
+		
 		HotelDto hotelDto = null;
 		try {
-			hotelDto = getHotelDto(hotelName);			
-		} catch(HttpClientErrorException | HttpServerErrorException e) {
-			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
-		}
-		if (hotelDto == null) {
+			hotelDto = getHotelDto(hotelName);	
+		} catch(HttpClientErrorException e) {
 			return new ResponseEntity<>("No hotels found with the hotel name " + normalizeHotelName(hotelName),
-					HttpStatus.BAD_REQUEST);
+					HttpStatus.NOT_FOUND);
+		} catch(HttpServerErrorException e) {
+			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
+		} catch(Exception e) {
+			return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-		List<Booking> bookings = bookingService.getAllBookings(hotelDto.getIdHotel());
+		
+		List<Booking> bookings = new ArrayList<>();
+		try {
+			bookings = bookingService.getAllBookings(hotelDto.getIdHotel());
+		} catch(SQLException e) {
+			return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
 		if (bookings.isEmpty()) {
 			return new ResponseEntity<>("No bookings found for hotel " + hotelDto.getName(), HttpStatus.NO_CONTENT);
 		} else {

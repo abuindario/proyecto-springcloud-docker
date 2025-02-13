@@ -1,9 +1,10 @@
 package com.darioabuin.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -21,8 +22,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClient.RequestHeadersUriSpec;
 import org.springframework.web.client.RestClient.ResponseSpec;
@@ -53,11 +56,27 @@ class BookingApplicationITests {
 
 	@BeforeEach
 	void setup() throws SQLException {
-		conn = DriverManager.getConnection("jdbc:h2:mem:test;INIT=runscript from 'classpath:booking-schema.sql'", "sa",
-				"");
+		conn = DriverManager.getConnection("jdbc:h2:mem:test;INIT=runscript from 'classpath:booking-schema.sql'", "sa", "");
 		connectionHolder = new ConnectionHolderImpl(conn);
 		restClient = mock(RestClient.class);
 		bookingController = new BookingController(new BookingServiceImpl(new BookingJdbcRepository(conn)), restClient);
+	}
+	
+	@Test
+	void shouldFailGettingBookings_repositoryThrowsSqlException() {
+		// GIVEN
+		BookingServiceImpl mockBookingServiceImpl = mock(BookingServiceImpl.class);
+		
+		// WHEN
+		try {
+			when(mockBookingServiceImpl.getAllBookings(Long.valueOf(1))).thenThrow(SQLException.class);
+		} catch (SQLException e) {
+		}
+		ResponseEntity<?> response = bookingController.getAllBookings(RIU);
+		
+		// THEN
+		assertNotNull(response);
+		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
 	}
 
 	@Test
@@ -106,12 +125,12 @@ class BookingApplicationITests {
 		// GIVEN
 
 		// WHEN
-		setupMockRestClient(hotelName);
+		setupMockRestClient_notFound(hotelName);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 
 		// THEN
 		assertNotNull(response);
-		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+		assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
 		assertEquals("No hotels found with the hotel name " + hotelName, response.getBody());
 	}
 
@@ -127,7 +146,7 @@ class BookingApplicationITests {
 		// THEN
 		assertNotNull(response);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-		assertEquals("Please, enter a hotel name to check.", response.getBody());
+		assertEquals("Please, enter a hotel name to check.", response.getBody());	
 	}
 	
 	@Test
@@ -136,16 +155,25 @@ class BookingApplicationITests {
 		String hotelName = "something";
 		
 		// WHEN
-		setupNullMockRestClient(hotelName);
+		setupMockRestClientServerError(hotelName);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 		
 		// THEN
 		assertNotNull(response);
 		assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
-		assertEquals("Hotel service unavailable.", response.getBody());	}
+		assertEquals("Hotel service unavailable.", response.getBody());	
+	}
 
 	private Booking populateBooking() {
 		return new Booking(Long.valueOf(1), "Elsa Polindo", "12345678A", Long.valueOf(1), Long.valueOf(1));
+	}
+	
+	private void setupMockRestClient_notFound(String hotelName) {
+		RequestHeadersUriSpec getRequest = mock(RequestHeadersUriSpec.class);
+		ResponseSpec response = mock(ResponseSpec.class);
+		when(restClient.get()).thenReturn(getRequest);
+		when(getRequest.uri(anyString())).thenReturn(getRequest);
+		when(getRequest.retrieve()).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 	}
 
 	private void setupMockRestClient(String hotelName) {
@@ -154,8 +182,11 @@ class BookingApplicationITests {
 		when(restClient.get()).thenReturn(getRequest);
 		when(getRequest.uri(anyString())).thenReturn(getRequest);
 		when(getRequest.retrieve()).thenReturn(response);
-		when(response.body(HotelDto.class)).thenReturn(getExpectedHotelDto(StringUtils.isBlank(hotelName) ? ""
-				: hotelName.equals(RIU) ? RIU : hotelName.equals(IBIS) ? IBIS : ""));
+		when(response.body(HotelDto.class)).thenReturn(
+				StringUtils.isBlank(hotelName) ? getExpectedHotelDto("")
+						: hotelName.equals(RIU) ? getExpectedHotelDto(RIU)
+						: hotelName.equals(IBIS) ? getExpectedHotelDto(IBIS) 
+													: getExpectedHotelDto(""));
 	}
 
 	private HotelDto getExpectedHotelDto(String hotelName) {
@@ -167,11 +198,11 @@ class BookingApplicationITests {
 		return hotelDto;
 	}
 	
-	private void setupNullMockRestClient(String hotelName) {
+	private void setupMockRestClientServerError(String hotelName) {
 		RequestHeadersUriSpec getRequest = mock(RequestHeadersUriSpec.class);
 		ResponseSpec response = mock(ResponseSpec.class);
 		when(restClient.get()).thenReturn(getRequest);
 		when(getRequest.uri(anyString())).thenReturn(getRequest);
-		when(getRequest.retrieve()).thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+		when(getRequest.retrieve()).thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
 	}
 }

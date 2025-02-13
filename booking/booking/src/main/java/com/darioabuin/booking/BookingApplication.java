@@ -26,7 +26,8 @@ public class BookingApplication {
 	
 	@Bean
 	BookingJdbcRepository createBookingJdbcRepository() throws SQLException {
-		return new BookingJdbcRepository(DriverManager.getConnection("jdbc:h2:~/test;INIT=runscript from 'classpath:booking-schema.sql'", "sa", ""));
+//		return new BookingJdbcRepository(DriverManager.getConnection("jdbc:h2:~/test;INIT=runscript from 'classpath:booking-schema.sql'", "sa", ""));
+		return new BookingJdbcRepository(DriverManager.getConnection("jdbc:mysql://localhost:3306/springbootspringcloud", "root", "root"));
 	}
 	
 	@Bean
