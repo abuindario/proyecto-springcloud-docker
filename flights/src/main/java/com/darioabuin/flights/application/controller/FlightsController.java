@@ -52,15 +52,17 @@ public class FlightsController {
 			})
 	@PutMapping("/flights/book/{id}/{seats}")
 	public ResponseEntity<HttpStatus> bookSeats(@PathVariable("id") int flightId, @PathVariable("seats") int bookedSeats) {
-		if(flightId > 0 && bookedSeats > 0)
+		if(flightId > 0 && bookedSeats > 0) {
 			try {
 				flightService.bookSeats(flightId, bookedSeats);
+				System.out.println("Booked seats: FlightId: " + flightId + ", number of seats: " + bookedSeats);
 				return new ResponseEntity<>(HttpStatus.OK);
 			} catch(RuntimeException e) {
 				System.out.println(e);
 				return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 			}
-		else
+		} else {
 			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
 	}
 }

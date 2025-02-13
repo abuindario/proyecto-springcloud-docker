@@ -1,19 +1,22 @@
 package com.darioabuin.booking.application.controller;
 
-import java.io.IOError;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
 
+import com.darioabuin.booking.application.dto.BookingDto;
 import com.darioabuin.booking.application.dto.HotelDto;
 import com.darioabuin.booking.domain.api.BookingService;
 import com.darioabuin.booking.domain.model.Booking;
@@ -27,9 +30,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController
 public class BookingController {
 
+	private String HOTEL_SERVICE_URL = "http://localhost:8080/hotels/";
+	private static final String FLIGHT_SERVICE_URL = "http://localhost:8081/flights/book/";
 	private BookingService bookingService;
 	private RestClient restClient;
-	private String HOTEL_SERVICE_URL = "http://localhost:8080/hotels/";
 
 	public BookingController(BookingService bookingService, RestClient restClient) {
 		this.bookingService = bookingService;
@@ -58,6 +62,11 @@ public class BookingController {
 			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 		}
 		
+		if (hotelDto == null) {
+			return new ResponseEntity<>("No hotels found with the hotel name " + normalizeHotelName(hotelName),
+					HttpStatus.BAD_REQUEST);
+		}
+		
 		List<Booking> bookings = new ArrayList<>();
 		try {
 			bookings = bookingService.getAllBookings(hotelDto.getIdHotel());
@@ -72,11 +81,44 @@ public class BookingController {
 		}
 	}
 
+	@PostMapping("/bookings/book")
+	public ResponseEntity<?> postBooking(@RequestBody BookingDto bookingDto) {
+		Booking postedBooking = null;
+		HttpStatusCode responseStatusCode = null;
+		try {
+			responseStatusCode = putSeatsFlightService(bookingDto);
+		} catch(HttpClientErrorException | HttpServerErrorException e) {
+			responseStatusCode = HttpStatus.BAD_REQUEST;
+		} catch(RuntimeException e) {
+			System.out.println(e);
+			return new ResponseEntity<>("Flight service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
+		}
+		
+		if(responseStatusCode == null) {
+			return new ResponseEntity<>("System didn't receive any response from Flight service.", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		if(responseStatusCode.equals(HttpStatus.OK)) {
+			try {
+				postedBooking = bookingService.postBooking(bookingDto);	
+				return new ResponseEntity<>(postedBooking, HttpStatus.OK);
+			} catch(SQLException e) {
+				return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+		}
+		return new ResponseEntity<>("Invalid idVuelo or invalid number of seats to book.", HttpStatus.BAD_REQUEST);
+	}
+	
 	private String normalizeHotelName(String hotelName) {
 		return hotelName.trim();
 	}
 
 	private HotelDto getHotelDto(String hotelName) {
 		return restClient.get().uri(HOTEL_SERVICE_URL + normalizeHotelName(hotelName)).retrieve().body(HotelDto.class);
+	}
+
+	private HttpStatusCode putSeatsFlightService(BookingDto bookingDto) {
+		System.out.println(FLIGHT_SERVICE_URL + bookingDto.getIdVuelo() + "/" + bookingDto.getNumberOfSeats());
+		return restClient.put().uri(FLIGHT_SERVICE_URL + bookingDto.getIdVuelo() + "/" + bookingDto.getNumberOfSeats()).retrieve().body(ResponseEntity.class).getStatusCode();
 	}
 }
