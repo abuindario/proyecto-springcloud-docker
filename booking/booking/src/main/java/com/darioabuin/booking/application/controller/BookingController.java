@@ -1,5 +1,6 @@
 package com.darioabuin.booking.application.controller;
 
+import java.io.IOError;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +55,7 @@ public class BookingController {
 		} catch(HttpServerErrorException e) {
 			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 		} catch(Exception e) {
-			return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 		}
 		
 		List<Booking> bookings = new ArrayList<>();

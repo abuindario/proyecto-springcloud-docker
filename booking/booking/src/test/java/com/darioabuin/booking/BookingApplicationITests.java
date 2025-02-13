@@ -8,6 +8,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.IOError;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -63,16 +65,15 @@ class BookingApplicationITests {
 	}
 	
 	@Test
-	void shouldFailGettingBookings_repositoryThrowsSqlException() {
+	void shouldFailGettingBookings_repositoryThrowsSqlException() throws SQLException {
 		// GIVEN
+		String hotelName = RIU;
 		BookingServiceImpl mockBookingServiceImpl = mock(BookingServiceImpl.class);
 		
 		// WHEN
-		try {
-			when(mockBookingServiceImpl.getAllBookings(Long.valueOf(1))).thenThrow(SQLException.class);
-		} catch (SQLException e) {
-		}
-		ResponseEntity<?> response = bookingController.getAllBookings(RIU);
+		setupMockRestClient(hotelName);
+		when(mockBookingServiceImpl.getAllBookings(Long.valueOf(1))).thenThrow(new SQLException());
+		ResponseEntity<?> response = new BookingController(mockBookingServiceImpl, restClient).getAllBookings(hotelName);
 		
 		// THEN
 		assertNotNull(response);
@@ -164,6 +165,21 @@ class BookingApplicationITests {
 		assertEquals("Hotel service unavailable.", response.getBody());	
 	}
 
+	@Test
+	void shouldFailGetBookings_errorFromRestClient_restClientNullGetResponse() {
+		// GIVEN
+		String hotelName = "something";
+		
+		// WHEN
+		setupMockRestClient_null(hotelName);
+		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
+		
+		// THEN
+		assertNotNull(response);
+		assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+		assertEquals("Hotel service unavailable.", response.getBody());	
+	}
+	
 	private Booking populateBooking() {
 		return new Booking(Long.valueOf(1), "Elsa Polindo", "12345678A", Long.valueOf(1), Long.valueOf(1));
 	}
@@ -204,5 +220,11 @@ class BookingApplicationITests {
 		when(restClient.get()).thenReturn(getRequest);
 		when(getRequest.uri(anyString())).thenReturn(getRequest);
 		when(getRequest.retrieve()).thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
+	}
+	
+	private void setupMockRestClient_null(String hotelName) {
+		RequestHeadersUriSpec getRequest = mock(RequestHeadersUriSpec.class);
+		ResponseSpec response = mock(ResponseSpec.class);
+		when(restClient.get()).thenThrow(new RuntimeException());
 	}
 }
