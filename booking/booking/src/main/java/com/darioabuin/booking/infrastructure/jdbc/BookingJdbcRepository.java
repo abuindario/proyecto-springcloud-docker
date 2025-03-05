@@ -49,7 +49,7 @@ public class BookingJdbcRepository implements BookingRepository {
 			ps.execute();
 			ResultSet keys = ps.getGeneratedKeys();
 			if(keys.next()) {
-				bookingId = keys.getLong("id");
+				bookingId = keys.getLong(1);
 			}
 		} 
 		return bookingId;

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+<title>Bookings</title>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+
+<!-- jQuery library -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- Latest compiled JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script> 
+</head>
+<body>
+	<div ng-app="bookingsApp" ng-controller="bookingsController" class="container">
+	<h1>Bookings</h1>	
+		
+		<br>
+			<label for="selectedHotel">Hotel: </label>
+			<select id="selectedHotel" ng-model="selectedHotel" ng-init="cargar()">
+				<option ng-repeat="h in hotels" ng-value="h">Name: {{h.name}}, Category: {{h.category}}, Price: {{h.price}}</option>
+			</select>
+			<br/>
+			<label for="seatsToBook">Seats to book: </label><input type="number" min="0" value="0" id="seatsToBook">
+			<br/>
+			<label for="selectedFlight">Flight: </label>
+			<select id="selectedFlight" ng-model="selectedFlight">
+					<option ng-repeat="f in flights" ng-value="f">Company: {{f.company}}, Date: {{f.flightDate}}, Price: {{f.price}}, Available seats: {{f.availableSeats}}</option>
+			</select>
+			<br/>
+			<label for="passengerName">Passenger name: </label><input type="text" id="passengerName">
+			<br/>
+			<label for="passengerDni">Passenger DNI: </label><input type="text" id="passengerDni">
+			<br/>
+			<button id="bookTickets">Book tickets</button>
+		</br>
+		
+	</div>
+	<script>
+		var app=angular.module("bookingsApp",[]);
+		app.controller("bookingsController",function($scope,$http){
+			$scope.hotels=[];	
+			$scope.flights=[];
+			const bookingsUrl="http://localhost:8090/bookings/book";
+			const flightsUrl="http://localhost:8081/flights/";
+			const hotelsUrl="http://localhost:8080/hotels";
+
+			$scope.cargar=function(){
+				// let url="http://localhost:9000/spedidos/pedidos";	
+				fetchHotels();
+				fetchAvailableFlights(0);
+			}	
+			
+			document.getElementById("seatsToBook").onchange = function() {
+				fetchAvailableFlights();
+			}
+			
+			function fetchAvailableFlights() {
+				let seats = document.getElementById("seatsToBook").value;
+				let url = flightsUrl+seats;
+				$http.get(url).then(function(res){
+					$scope.flights=res.data;			
+				});
+			}	
+			
+			function fetchHotels() {
+				$http.get(hotelsUrl).then(function(res){
+					$scope.hotels=res.data;			
+				});
+			}
+
+			document.getElementById("bookTickets").onclick =			
+				function (e) {
+				e.preventDefault();
+				booking = {
+					customerName: document.getElementById("passengerName").value,
+					dni: document.getElementById("passengerDni").value,
+					numberOfSeats: document.getElementById("seatsToBook").value,
+					idHotel: $scope.selectedHotel.idHotel,
+					idVuelo: $scope.selectedFlight.idVuelo
+				}
+				console.log(booking);
+				$http.post(bookingsUrl, booking);
+				fetchAvailableFlights();
+			};
+	})
+	</script>
+	
+	
+</body>
+</html>

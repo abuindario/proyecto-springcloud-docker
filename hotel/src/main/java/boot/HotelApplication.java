@@ -32,6 +32,7 @@ public class HotelApplication {
 	}
 
 	private static Connection getJdbcConnection() throws SQLException {
-		return DriverManager.getConnection("jdbc:h2:~/test;INIT=runscript from 'classpath:hotel-schema.sql'", "sa", "");
+//		return DriverManager.getConnection("jdbc:h2:~/test;INIT=runscript from 'classpath:hotel-schema.sql'", "sa", "");
+		return DriverManager.getConnection("jdbc:mysql://localhost:3306/springbootspringcloud", "root", "root");
 	}
 }

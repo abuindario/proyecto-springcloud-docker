@@ -36,4 +36,10 @@ public class BookingDto {
 		return idVuelo;
 	}
 
+	@Override
+	public String toString() {
+		return "BookingDto [customerName=" + customerName + ", dni=" + dni + ", numberOfSeats=" + numberOfSeats
+				+ ", idHotel=" + idHotel + ", idVuelo=" + idVuelo + "]";
+	}
+
 }

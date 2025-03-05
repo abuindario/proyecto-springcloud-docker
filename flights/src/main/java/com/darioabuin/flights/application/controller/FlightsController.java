@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -18,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
+@CrossOrigin
 public class FlightsController {
 	
 	private FlightService flightService;
@@ -51,7 +53,7 @@ public class FlightsController {
 					@ApiResponse(responseCode="400", description="The parameters 'seats' and 'id' must be greater than 0. Flight Id may not exist, or it may have no such ammount of available seats.", content=@Content())
 			})
 	@PutMapping("/flights/book/{id}/{seats}")
-	public ResponseEntity<HttpStatus> bookSeats(@PathVariable("id") int flightId, @PathVariable("seats") int bookedSeats) {
+	public ResponseEntity<HttpStatus> bookSeats(@PathVariable("id") Integer flightId, @PathVariable("seats") int bookedSeats) {
 		if(flightId > 0 && bookedSeats > 0) {
 			try {
 				flightService.bookSeats(flightId, bookedSeats);

@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,15 +24,19 @@ import com.darioabuin.booking.domain.model.Booking;
 
 import io.micrometer.common.util.StringUtils;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
+@CrossOrigin
 public class BookingController {
 
-	private String HOTEL_SERVICE_URL = "http://localhost:8080/hotels/";
-	private static final String FLIGHT_SERVICE_URL = "http://localhost:8081/flights/book/";
+//	private static final String HOTEL_SERVICE_URL = "http://localhost:8080/hotels/";
+//	private static final String FLIGHT_SERVICE_URL = "http://localhost:8081/flights/book/";
+	private static final String HOTEL_SERVICE_URL = "http://hotel-service/hotels/";
+	private static final String FLIGHT_SERVICE_URL = "http://flights-service/flights/book/";
 	private BookingService bookingService;
 	private RestClient restClient;
 
@@ -59,6 +64,7 @@ public class BookingController {
 		} catch(HttpServerErrorException e) {
 			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 		} catch(Exception e) {
+			System.out.println("Booking controller: " + e);
 			return new ResponseEntity<>("Hotel service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 		}
 		
@@ -81,8 +87,11 @@ public class BookingController {
 		}
 	}
 
+	@Operation(summary = "Create a new Booking", description = "This method will check if there are many seats available on the flight before creating the booking.", responses = {
+			@ApiResponse(responseCode = "200", description = "Creates a new Booking in the system.", content = @Content(schema = @Schema(implementation = Booking.class))),
+			@ApiResponse(responseCode = "400", description = "Invalid idVuelo or invalid amount of seats to book.", content = @Content()) })
 	@PostMapping("/bookings/book")
-	public ResponseEntity<?> postBooking(@RequestBody BookingDto bookingDto) {
+	public ResponseEntity<?> postBooking(@Parameter(description="Customer and Booking details.", schema=@Schema(implementation = BookingDto.class), required=true) @RequestBody BookingDto bookingDto) {
 		Booking postedBooking = null;
 		HttpStatusCode responseStatusCode = null;
 		try {
@@ -90,7 +99,7 @@ public class BookingController {
 		} catch(HttpClientErrorException | HttpServerErrorException e) {
 			responseStatusCode = HttpStatus.BAD_REQUEST;
 		} catch(RuntimeException e) {
-			System.out.println(e);
+			System.out.println("Booking controller: " + e);
 			return new ResponseEntity<>("Flight service unavailable.", HttpStatus.SERVICE_UNAVAILABLE);
 		}
 		
@@ -118,7 +127,14 @@ public class BookingController {
 	}
 
 	private HttpStatusCode putSeatsFlightService(BookingDto bookingDto) {
-		System.out.println(FLIGHT_SERVICE_URL + bookingDto.getIdVuelo() + "/" + bookingDto.getNumberOfSeats());
-		return restClient.put().uri(FLIGHT_SERVICE_URL + bookingDto.getIdVuelo() + "/" + bookingDto.getNumberOfSeats()).retrieve().body(ResponseEntity.class).getStatusCode();
+		return restClient.put()
+				.uri(FLIGHT_SERVICE_URL + bookingDto.getIdVuelo() + "/" + bookingDto.getNumberOfSeats())
+				.exchange((request, response) -> {
+					if(response.getStatusCode().isSameCodeAs(HttpStatusCode.valueOf(200))) {
+						return HttpStatus.OK;
+					} else {
+						return HttpStatus.BAD_REQUEST;
+					}
+				});
 	}
 }

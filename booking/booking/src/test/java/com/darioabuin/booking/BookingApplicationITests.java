@@ -6,7 +6,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -18,12 +20,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.reactive.server.WebTestClient.RequestHeadersSpec;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClient.RequestBodySpec;
 import org.springframework.web.client.RestClient.RequestBodyUriSpec;
+import org.springframework.web.client.RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse;
+import org.springframework.web.client.RestClient.RequestHeadersSpec.ExchangeFunction;
 import org.springframework.web.client.RestClient.RequestHeadersUriSpec;
 import org.springframework.web.client.RestClient.ResponseSpec;
 
@@ -74,7 +83,7 @@ class BookingApplicationITests {
 		Booking expectedBooking = populateExpectedBooking(bookingDto);
 		
 		// WHEN
-		setupMockRestClient(PUT, "OK");
+		setupMockRestClient_statusCodeOnly(PUT, "OK");
 		ResponseEntity<?> response = bookingController.postBooking(bookingDto);
 		
 		// THEN	
@@ -96,7 +105,7 @@ class BookingApplicationITests {
 		BookingDto bookingDto = populateBookingDto(2);
 
 		// WHEN
-		setupMockRestClient(PUT, BAD_REQUEST);
+		setupMockRestClient_statusCodeOnly(PUT, BAD_REQUEST);
 		ResponseEntity<?> response = bookingController.postBooking(bookingDto);
 		
 		// THEN	
@@ -112,7 +121,7 @@ class BookingApplicationITests {
 		BookingServiceImpl mockBookingServiceImpl = mock(BookingServiceImpl.class);
 		
 		// WHEN
-		setupMockRestClient(PUT, "OK");
+		setupMockRestClient_statusCodeOnly(PUT, "OK");
 		when(mockBookingServiceImpl.postBooking(bookingDto)).thenThrow(new SQLException());
 		ResponseEntity<?> response = new BookingController(mockBookingServiceImpl, restClient).postBooking(bookingDto);
 		
@@ -136,7 +145,7 @@ class BookingApplicationITests {
 		BookingServiceImpl mockBookingServiceImpl = mock(BookingServiceImpl.class);
 		
 		// WHEN
-		setupMockRestClient(hotelName);
+		setupMockRestClient_responseBody_booking(hotelName);
 		when(mockBookingServiceImpl.getAllBookings(Long.valueOf(1))).thenThrow(new SQLException());
 		ResponseEntity<?> response = new BookingController(mockBookingServiceImpl, restClient).getAllBookings(hotelName);
 		
@@ -152,7 +161,7 @@ class BookingApplicationITests {
 		String hotelName = RIU;
 
 		// WHEN
-		setupMockRestClient(hotelName);
+		setupMockRestClient_responseBody_booking(hotelName);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 
 		// THEN
@@ -176,7 +185,7 @@ class BookingApplicationITests {
 		String hotelName = IBIS;
 
 		// WHEN
-		setupMockRestClient(hotelName);
+		setupMockRestClient_responseBody_booking(hotelName);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 
 		// THEN
@@ -191,7 +200,7 @@ class BookingApplicationITests {
 		// GIVEN
 
 		// WHEN
-		setupMockRestClient(GET, hotelName);
+		setupMockRestClient_statusCodeOnly(GET, hotelName);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 
 		// THEN
@@ -206,7 +215,7 @@ class BookingApplicationITests {
 		// GIVEN
 
 		// WHEN
-		setupMockRestClient(hotelName);
+		setupMockRestClient_responseBody_booking(hotelName);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 
 		// THEN
@@ -221,7 +230,7 @@ class BookingApplicationITests {
 		String hotelName = "something";
 		
 		// WHEN
-		setupMockRestClient(GET, SERVICE_UNAVAILABLE);
+		setupMockRestClient_statusCodeOnly(GET, SERVICE_UNAVAILABLE);
 		ResponseEntity<?> response = bookingController.getAllBookings(hotelName);
 		
 		// THEN
@@ -240,7 +249,7 @@ class BookingApplicationITests {
 		String service = "";
 		
 		// WHEN
-		setupMockRestClient(requestMethod, NULL);
+		setupMockRestClient_statusCodeOnly(requestMethod, NULL);
 		if(requestMethod.equals(GET)) {
 			response = bookingController.getAllBookings(hotelName);
 			service = "Hotel";
@@ -259,7 +268,7 @@ class BookingApplicationITests {
 		return new Booking(Long.valueOf(10), "Elsa Polindo", "12345678A", Long.valueOf(1), Long.valueOf(1));
 	}
 
-	private void setupMockRestClient(String hotelName) {
+	private void setupMockRestClient_responseBody_booking(String hotelName) {
 		RequestHeadersUriSpec getRequest = mock(RequestHeadersUriSpec.class);
 		ResponseSpec response = mock(ResponseSpec.class);
 		when(restClient.get()).thenReturn(getRequest);
@@ -281,10 +290,9 @@ class BookingApplicationITests {
 		return hotelDto;
 	}
 	
-	private void setupMockRestClient(String requestMethod, String situation) {
+	private void setupMockRestClient_statusCodeOnly(String requestMethod, String situation) {
 		if(requestMethod.equals(GET)) {
 			RequestHeadersUriSpec getRequest = mock(RequestHeadersUriSpec.class);
-			ResponseSpec response = mock(ResponseSpec.class);
 			if(situation.equals(NULL))
 				when(restClient.get()).thenThrow(new RuntimeException());
 			else {
@@ -293,16 +301,15 @@ class BookingApplicationITests {
 				when(getRequest.retrieve()).thenThrow(situation.equals(SERVICE_UNAVAILABLE) ? new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE) : new HttpClientErrorException(HttpStatus.NOT_FOUND));	
 			}
 		} else if(requestMethod.equals(PUT)) {
-			RequestBodyUriSpec getRequest = mock(RequestBodyUriSpec.class);
-			ResponseSpec response = mock(ResponseSpec.class);
+			RequestBodyUriSpec putRequest = mock(RequestBodyUriSpec.class);
 			if(situation.equals(NULL))
 				when(restClient.put()).thenThrow(new RuntimeException());
 			else {
-				when(restClient.put()).thenReturn(getRequest);
-				when(getRequest.uri(anyString())).thenReturn(getRequest);
-				when(getRequest.retrieve()).thenReturn(response);
-				when(getRequest.body(ResponseEntity.class)).thenReturn(getRequest);
-				when(response.body(ResponseEntity.class)).thenReturn(situation.equals(BAD_REQUEST) ? new ResponseEntity<>(HttpStatus.BAD_REQUEST) : new ResponseEntity<>(HttpStatus.OK));
+				when(restClient.put()).thenReturn(putRequest);
+				when(putRequest.uri(anyString())).thenReturn(putRequest);
+				when(putRequest.exchange(ArgumentMatchers.any())).thenAnswer(invocation -> {
+					return situation.equals(BAD_REQUEST) ? HttpStatus.BAD_REQUEST : HttpStatus.OK;
+				});
 			}
 		}
 	}
