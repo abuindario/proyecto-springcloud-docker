@@ -43,12 +43,15 @@
 		app.controller("bookingsController",function($scope,$http){
 			$scope.hotels=[];	
 			$scope.flights=[];
-			const bookingsUrl="http://localhost:8090/bookings/book";
-			const flightsUrl="http://localhost:8081/flights/";
-			const hotelsUrl="http://localhost:8080/hotels";
-
+			// const bookingsUrl="http://localhost:8090/bookings/book";
+			// const flightsUrl="http://localhost:8086/flights/";
+			// const hotelsUrl="http://localhost:8080/hotels";
+			// let url="http://localhost:9000/spedidos/pedidos";	
+			const hotelsUrl = "http://localhost:9000/hotel-serv/hotels";
+			const flightsUrl="http://localhost:9000/flight-serv/flights/";
+			const bookingsUrl="http://localhost:9000/booking-serv/bookings/book";
+			
 			$scope.cargar=function(){
-				// let url="http://localhost:9000/spedidos/pedidos";	
 				fetchHotels();
 				fetchAvailableFlights(0);
 			}	
