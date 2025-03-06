@@ -1,0 +1,7 @@
+FROM openjdk:21
+
+ADD flights.jar target/flight.jar
+
+EXPOSE 9000
+
+ENTRYPOINT ["java", "-jar", "target/flight.jar"]

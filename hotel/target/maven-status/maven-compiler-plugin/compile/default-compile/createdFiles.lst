@@ -1,0 +1,7 @@
+domain\api\HotelServiceImpl.class
+infrastructure\jdbc\HotelJdbcRepository.class
+domain\api\HotelService.class
+domain\spi\HotelRepositoryPort.class
+domain\model\Hotel.class
+application\controller\HotelController.class
+boot\HotelApplication.class

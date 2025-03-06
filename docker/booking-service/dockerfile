@@ -1,0 +1,7 @@
+FROM openjdk:21
+
+ADD booking.jar target/booking.jar
+
+EXPOSE 9000
+
+ENTRYPOINT ["java", "-jar", "target/booking.jar"]

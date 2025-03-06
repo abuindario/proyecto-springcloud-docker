@@ -1,0 +1,5 @@
+docker build -t booking-service .
+
+docker run -p 8086:8086 booking-service
+
+docker ps #display running containers

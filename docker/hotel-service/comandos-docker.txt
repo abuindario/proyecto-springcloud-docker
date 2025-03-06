@@ -1,0 +1,5 @@
+docker build -t hotel-service .
+
+docker run -p 8082:8082 hotel-service
+
+docker ps #display running containers

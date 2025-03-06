@@ -32,7 +32,8 @@ public class FlightsApplication {
 	
 	@Bean
 	Connection createDatabaseConnection() throws SQLException {
-		return DriverManager.getConnection("jdbc:h2:~/test;INIT=runscript from 'classpath:flights-schema.sql'", "sa", "");
+//		return DriverManager.getConnection("jdbc:h2:~/test;INIT=runscript from 'classpath:flights-schema.sql'", "sa", "");
+		return DriverManager.getConnection("jdbc:mysql://192.168.1.83:3306/springbootspringcloud", "root", "root");
 	}
 
 }

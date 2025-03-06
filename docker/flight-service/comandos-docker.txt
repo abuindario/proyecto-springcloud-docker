@@ -1,0 +1,5 @@
+docker build -t flight-service .
+
+docker run -p 8086:8086 flight-service
+
+docker ps #display running containers
